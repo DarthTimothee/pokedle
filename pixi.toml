@@ -1,0 +1,21 @@
+[project]
+authors = ["DarthTimothee <timoverlaan@gmail.com>"]
+channels = ["conda-forge"]
+description = "Add a short description here"
+name = "pokedle"
+platforms = ["win-64"]
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+pandas = ">=2.2.3,<3"
+matplotlib = ">=3.9.3,<4"
+numpy = ">=2.0.2,<3"
+scipy = ">=1.14.1,<2"
+ipython = ">=8.30.0,<9"
+ipykernel = ">=6.29.5,<7"
+requests = ">=2.32.3,<3"
+tqdm = ">=4.67.1,<5"
+umap-learn = ">=0.5.7,<0.6"
+seaborn = ">=0.13.2,<0.14"
