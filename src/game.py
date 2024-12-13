@@ -2,6 +2,41 @@ import pandas as pd
 import numpy as np
 
 
+
+def _levenshtein_distance(s1, s2):
+        if len(s1) < len(s2):
+            s1, s2 = s2, s1
+        
+        prev_row = range(len(s2) + 1)
+        current_row = [0] * (len(s2) + 1)
+        
+        for i in range(len(s1)):
+            current_row[0] = i + 1
+            for j in range(len(s2)):
+                add = prev_row[j + 1] + 1
+                delete = current_row[j] + 1
+                change = prev_row[j]
+                if s1[i] != s2[j]:
+                    change += 1
+                current_row[j + 1] = min(add, delete, change)
+            prev_row = current_row[:]
+            
+        return prev_row[-1]
+
+def find_closest_string(target, string_list):
+    
+    closest = string_list[0]
+    min_distance = _levenshtein_distance(target, closest)
+    
+    for string in string_list[1:]:
+        distance = _levenshtein_distance(target, string)
+        if distance < min_distance:
+            min_distance = distance
+            closest = string
+            
+    return closest
+
+
 class Game:
     def __init__(self, dex, gen, net: bool = False):
         self.dex = dex
@@ -15,8 +50,9 @@ class Game:
         
         guessed_pokemon = self.dex[self.dex["name_api"] == name]
         if guessed_pokemon.empty:
-            print("Pokemon not found")
-            return False, None
+            name = find_closest_string(name, self.dex["name_api"].values)
+            print(f"Corrected to: {name}")
+            guessed_pokemon = self.dex[self.dex["name_api"] == name]
 
         if name == self.pokemon["name_api"]:
             print("Correct!")
