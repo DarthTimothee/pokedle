@@ -80,14 +80,14 @@ class Game:
             return candidates[state % len(candidates)]
         
     def game_ending(self):
-        if game.end and game.won:
+        if self.end and self.won:
             for _ in range(3):  # Loop the animation 3 times
                 print("🎉 " * 10)
                 time.sleep(0.3)
                 print("✨ " * 10)
                 time.sleep(0.3)
             print("🎉🎉🎉 CONGRATULATIONS! 🎉🎉🎉\nYou won!")
-        if game.end and not game.won:
+        if self.end and not self.won:
             print("You lost!")
 
 
