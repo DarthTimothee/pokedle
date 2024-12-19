@@ -183,6 +183,7 @@ if __name__ == "__main__":
         print(args)
     gen = args.gen #1
     net = args.net #False
+    updated_version = args.updated_version
     
     dex = pd.read_csv(config.DATA_DIR / f'dex_gen{gen}.csv', dtype={
         "pokedex_number": int,
@@ -192,7 +193,6 @@ if __name__ == "__main__":
         "height_m": float,
         "weight_kg": float
     })
-    updated_version = args.updated_versio
     game = Game(dex, gen=gen, net=net, imagify=args.imagify, verbose=args.verbose, updated_version=updated_version)
     if args.testing:
         print(f"Testing stage activated! Answer is: {game.pokemon['name']}")
