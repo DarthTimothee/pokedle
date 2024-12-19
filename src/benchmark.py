@@ -1,14 +1,38 @@
 import json
 import random
 import os
+import argparse 
 
 import pandas as pd
 import numpy as np
 
 from tqdm import tqdm
 
+try:
+    from src import config
+except:
+    import config
+
 from game import Game
 from strategies.abstract import AbstractStrategy
+
+
+def _init_argparse():
+    parser = argparse.ArgumentParser(
+        usage="%(prog)s [OPTION] [FILE]...",
+        description="Enter game options"
+    )
+    parser.add_argument('--gen', '-g', dest='gen', type=int,
+                        help='Choose the generation of pokemons', default=1)
+    parser.add_argument('--net', '-n', dest='net', action='store_true',
+                        help='Choose columns for the game')
+    parser.add_argument('--i', '-iterations', dest='iterations', default=1,
+                        help='Choose number of iterations in the benchmark')
+    parser.add_argument('--verbose', dest='verbose', type=int, default=0,
+                        help='0 means no info about correctness or not. 1 means it tells you if it is correct or not!')
+    args = parser.parse_args()
+    print(f'Running args:{args}')
+    return args
 
 class BenchMark:
 
@@ -33,7 +57,6 @@ class BenchMark:
 
 
     def run(self, n: int, verbose: bool = False):
-    
         seeds = np.random.default_rng(self.random_state).permutation(n).tolist()
            
         for _ in tqdm(range(n), desc="Benchmarking...", disable=not verbose):
@@ -55,11 +78,8 @@ class BenchMark:
         return [r["tries"] for r in self.results]
 
     def save(self, out_filename=None):
-        if not os.path.exists("results"):
-            os.makedirs("results")
-
         if out_filename is None:
-            out_filename = f"results/{self.strat.name}_gen{self.gen}{'_net' if self.net else ''}.json"
+            out_filename = config.RESULT_DIR / f"{self.strat.name}_gen{self.gen}{'_net' if self.net else ''}_rs{self.random_state}.json"
 
         print(self.results)
         with open(out_filename, 'w') as f:
@@ -68,9 +88,8 @@ class BenchMark:
 
 
 if __name__ == "__main__":
-
-    gen = 1
-    dex = pd.read_csv(f"data/dex_gen{gen}.csv", dtype={
+    args = _init_argparse()
+    dex = pd.read_csv(config.DATA_DIR / f"dex_gen{args.gen}.csv", dtype={
         "pokedex_number": int,
         "generation": int,
         "evolution_stage": int,
@@ -81,10 +100,12 @@ if __name__ == "__main__":
 
     from strategies.random import RandomStrategy
     from strategies.slowpoke import SlowpokeStrategy
+    from strategies.biggestdivider import BiggestDividerStrategy
 
-    bench = BenchMark(SlowpokeStrategy, dex, gen=1, net=False, strat_kwargs={"initial_guess": "slowpoke"})
+    #bench = BenchMark(SlowpokeStrategy, dex, gen=1, net=False, strat_kwargs={"initial_guess": "slowpoke"})
+    bench = BenchMark(BiggestDividerStrategy, dex, gen=args.gen, net=args.net)
 
-    results = bench.run(1000, verbose=False)
+    results = bench.run(args.iterations, verbose=bool(args.verbose))
 
     print(results)
 

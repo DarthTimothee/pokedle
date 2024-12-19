@@ -3,6 +3,17 @@ import numpy as np
 import argparse
 import inquirer
 import os, time
+from shutil import which
+from pathlib import Path
+import random
+
+try:
+    from src import config
+except:
+    import config
+    
+from src import helper_functions
+
 
 def _init_argparse():
     parser = argparse.ArgumentParser(
@@ -15,6 +26,10 @@ def _init_argparse():
                         help='Choose columns for the game')
     parser.add_argument('--testing', dest='testing', action='store_true',
                         help='Answer is shown before the game starts, do it for testing and debugging purposes!')
+    parser.add_argument('--imagify', dest='imagify', action='store_true', 
+                        help='When the game is won, show the image of the pokemon!')
+    parser.add_argument('--verbose', dest='verbose', type=int, default=0,
+                        help='0 means no info about correctness or not. 1 means it tells you if it is correct or not!')
     args = parser.parse_args()
     print(f'Running args:{args}')
     return args
@@ -53,13 +68,31 @@ def find_closest_string(target, string_list):
 
 
 class Game:
-    def __init__(self, dex, gen, net: bool = False, random_state: int = None):
+    def __init__(self, dex, gen, net: bool = False, random_state: int = None, imagify: bool = False, verbose: int = 1):
         self.dex = dex
         self.gen = gen
         self.net = net
+        if random_state is not None:
+            self.random_state = random_state
+        else:
+            self.random_state = random.randint(0, 1000)
+        self.imagify = imagify
+        self.verbose = verbose
 
         # select a random pokemon from the dex
         self.pokemon = self.dex.sample(1).iloc[0]
+        self.pokemon_pic_loc = config.DATA_DIR / 'img' / f'gen{self.gen}' / f'{self.pokemon["name"]}.jpg'
+        
+        #Check if images exist
+        if self.imagify:
+            self._image_checker()
+
+        if self.net:
+            self.prediction_cols = ["type1", "type2", "habitat", "color", "evolution_stage", "height", "weight"]
+        else:
+            self.prediction_cols = ["type1", "type2", "evolution_stage", "fully_evolved", "color", "habitat", "generation"]
+        
+        
         
         # game related settings
         self.end = False
@@ -71,14 +104,31 @@ class Game:
         if candidates:
             return candidates[state % len(candidates)]
         
+    def _image_checker(self):
+        if which('catimg') is None:
+            print(f'Images will not be available. Please install catimg package into your system with brew(os) or apt-get(linux).')
+            self.imagify = False
+        elif not os.path.exists(self.pokemon_pic_loc):
+            print(f"catimg package is available but picture of pokemon at {self.pokemon_pic_loc.parent} does not exist!")
+            self.imagify = False
+            img_download_permission = input("Do you want to download pictures to data/img location? (yes,y,true,1 or no,n,false,0)")
+            if img_download_permission.lower() in ['true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh']:
+                helper_functions.download_pokemon_images(self.dex, self.pokemon_pic_loc.parent, verbose=False)
+                if os.path.exists(self.pokemon_pic_loc):
+                    self.imagify = True
+        
     def game_ending(self):
-        if game.end:
-            for _ in range(3):  # Loop the animation 3 times
-                print("🎉 " * 10)
-                time.sleep(0.3)
-                print("✨ " * 10)
-                time.sleep(0.3)
+        if self.end:
+            if self.verbose==1:
+                for _ in range(1):  # Loop the animation 3 times
+                    print("🎉 " * 10)
+                    time.sleep(0.3)
+                    print("✨ " * 10)
+                    time.sleep(0.3)
             print("🎉🎉🎉 CONGRATULATIONS! 🎉🎉🎉\nYou won!")
+            if self.imagify:
+                os.system(f"catimg -r 2 -w 80 {self.pokemon_pic_loc.absolute().as_posix()}")
+                #os.system(f"catimg -r 2 -w 80 data/img/gen{self.gen}/{self.pokemon['name_api']}.jpg")
 
 
     def guess(self, name) -> bool:
@@ -95,17 +145,9 @@ class Game:
         if guessed_pokemon["name"] == self.pokemon["name"]:
             self.end = True
 
-        com_cols = ["type1", "type2", "evolution_stage", "fully_evolved", "color", "habitat", "generation"]
-        net_cols = ["type1", "type2", "habitat", "color", "evolution_stage", "height", "weight"]
-
-        if self.net:
-            cols = net_cols
-        else:
-            cols = com_cols
-
         # For each column we check if it's correct, so we can give it as a hint
         d = {}
-        for col in cols:
+        for col in self.prediction_cols:
             guessed_val = guessed_pokemon[col]
             d[col] = [guessed_val, bool(guessed_val == self.pokemon[col])   ]
         return self.end, d
@@ -117,7 +159,8 @@ if __name__ == "__main__":
         print(args)
     gen = args.gen #1
     net = args.net #False
-    dex = pd.read_csv(f"data/dex_gen{gen}.csv", dtype={
+    
+    dex = pd.read_csv(config.DATA_DIR / f'dex_gen{gen}.csv', dtype={
         "pokedex_number": int,
         "generation": int,
         "evolution_stage": int,
@@ -125,7 +168,7 @@ if __name__ == "__main__":
         "height_m": float,
         "weight_kg": float
     })
-    game = Game(dex, gen=gen, net=net)
+    game = Game(dex, gen=gen, net=net, imagify=args.imagify, verbose=args.verbose)
     if args.testing:
         print(f"Testing stage activated! Answer is: {game.pokemon['name']}")
 
