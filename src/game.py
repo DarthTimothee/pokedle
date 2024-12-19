@@ -15,6 +15,8 @@ def _init_argparse():
                         help='Choose columns for the game')
     parser.add_argument('--testing', dest='testing', action='store_true',
                         help='Answer is shown before the game starts, do it for testing and debugging purposes!')
+    parser.add_argument('--v2', dest='updated_version', action='store_true',
+                        help='Work with updated version that shows yellow color when type is correct but in wrong column')
     args = parser.parse_args()
     print(f'Running args:{args}')
     return args
@@ -53,7 +55,7 @@ def find_closest_string(target, string_list):
 
 
 class Game:
-    def __init__(self, dex, gen, net: bool = False, random_state: int = None):
+    def __init__(self, dex, gen, net: bool = False, random_state: int = None, updated_version: bool = False):
         self.dex = dex
         self.gen = gen
         self.net = net
@@ -103,12 +105,35 @@ class Game:
         else:
             cols = com_cols
 
-        # For each column we check if it's correct, so we can give it as a hint
-        d = {}
-        for col in cols:
-            guessed_val = guessed_pokemon[col]
-            d[col] = [guessed_val, bool(guessed_val == self.pokemon[col])   ]
+
+        if not updated_version:
+            # For each column we check if it's correct, so we can give it as a hint (old version)
+            d = {}
+            for col in cols:
+                guessed_val = guessed_pokemon[col]
+                d[col] = [guessed_val, bool(guessed_val == self.pokemon[col])   ]
+            return self.end, d
+        else:
+        # EXPERIMENTAL: check every column, but be aware of multiple typings (new version)
+            d = {}
+            for col in cols:
+                guessed_val = guessed_pokemon[col]
+                d[col] = [guessed_val, 0]
+                if col == "type1":
+                    if guessed_val == self.pokemon["type1"]:
+                        d[col][1] = 1
+                    elif guessed_val == self.pokemon["type2"]:
+                        d[col][1] = 2
+                elif col == "type2":
+                    if guessed_val == self.pokemon["type2"]:
+                        d[col][1] = 1
+                    elif guessed_val == self.pokemon["type1"]:
+                        d[col][1] = 2
+                else:
+                    if guessed_val == self.pokemon[col]:
+                        d[col][1] = 1
         return self.end, d
+
 
 
 if __name__ == "__main__":
@@ -125,7 +150,8 @@ if __name__ == "__main__":
         "height_m": float,
         "weight_kg": float
     })
-    game = Game(dex, gen=gen, net=net)
+    updated_version = args.updated_version
+    game = Game(dex, gen=gen, net=net, updated_version=updated_version)
     if args.testing:
         print(f"Testing stage activated! Answer is: {game.pokemon['name']}")
 
@@ -134,17 +160,37 @@ if __name__ == "__main__":
         name = inquirer.text("Enter a pokemon name", autocomplete=game._completer)
         iscorrect, hints = game.guess(name)
 
-        # pretty print each hint with colored background
-        # if the hint is correct, the background will be green
-        # if the hint is incorrect, the background will be red
-        # TODO: align the columns
-        line = ""
-        for k, v in hints.items():
-            if v[1]:
-                # correct, so green background
-                line += f"\033[42m{k}: {v[0]}\033[0m "
-            else:
-                line += f"\033[41m{k}: {v[0]}\033[0m "
+
+        if not updated_version:
+            # pretty print each hint with colored background
+            # if the hint is correct, the background will be green
+            # if the hint is incorrect, the background will be red
+            # TODO: align the columns
+            line = ""
+            for k, v in hints.items():
+                if v[1]:
+                    # correct, so green background
+                    line += f"\033[42m{k}: {v[0]}\033[0m "
+                else:
+                    line += f"\033[41m{k}: {v[0]}\033[0m "
+
+        else:
+            # pretty print each hint with colored background
+            # if the hint is correct, the background will be green
+            # if the hint is incorrect, the background will be red
+            # TODO: align the columns
+            # EXPERIMENTAL: yellow color if type is correct but in wrong column
+            line = ""
+            for k, v in hints.items():
+                if v[1] == 1:
+                    # correct -> green background
+                    line += f"\033[42m{k}: {v[0]}\033[0m "
+                elif v[1] == 2:
+                    # semi-correct -> yellow background
+                    line += f"\033[43m{k}: {v[0]}\033[0m "
+                else:
+                    # wrong -> red background
+                    line += f"\033[41m{k}: {v[0]}\033[0m "
         print(line)
 
     game.game_ending()
