@@ -16,4 +16,8 @@ class RandomStrategy(AbstractStrategy):
                 else:  # If this column was incorrect, eliminate this possibility
                     self.dex = self.dex[self.dex[col] != last_hint[col][0]]
 
-        return self.dex.sample(1).iloc[0]['name']
+        guess = self.dex.sample(1).iloc[0]['name']    
+
+        self.dex.drop(self.dex[self.dex["name"] == guess].index, inplace=True)
+
+        return guess

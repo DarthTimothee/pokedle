@@ -105,8 +105,9 @@ if __name__ == "__main__":
     from strategies.slowpoke import SlowpokeStrategy
     from strategies.biggestdivider import BiggestDividerStrategy
 
-    bench = BenchMark(SlowpokeStrategy, dex, gen=args.gen, net=False, strat_kwargs={"initial_guess": "kangaskhan"})
+    # bench = BenchMark(SlowpokeStrategy, dex, gen=args.gen, net=False, strat_kwargs={"initial_guess": "kangaskhan"})
     # bench = BenchMark(RandomStrategy, dex, gen=args.gen, net=args.net)
+    bench = BenchMark(BiggestDividerStrategy, dex, gen=args.gen, net=args.net)
 
     results = bench.run(args.repeats, verbose=bool(args.verbose))
 
