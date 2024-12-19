@@ -95,8 +95,6 @@ class Game:
         else:
             self.prediction_cols = ["type1", "type2", "evolution_stage", "fully_evolved", "color", "habitat", "generation"]
         
-        
-        
         # game related settings
         self.end = False
         self.tries = 0
@@ -175,6 +173,13 @@ class Game:
                     if guessed_val == self.pokemon[col]:
                         d[col][1] = 1
         return self.end, d
+    
+    def set_target(self, target_pokemon: str):
+        self.pokemon = self.dex[self.dex["name"] == target_pokemon].iloc[0]
+        self.end = False
+        self.tries = 0
+        if self.imagify:
+            self._image_checker()
 
 
 if __name__ == "__main__":

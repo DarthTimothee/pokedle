@@ -26,8 +26,8 @@ def _init_argparse():
                         help='Choose the generation of pokemons', default=1)
     parser.add_argument('--net', '-n', dest='net', action='store_true',
                         help='Choose columns for the game')
-    parser.add_argument('--i', '-iterations', dest='iterations', default=1,
-                        help='Choose number of iterations in the benchmark')
+    parser.add_argument('--repeats', '-r', dest='repeats', default=1, type=int,
+                        help='Choose number of repeats per pokemon in the benchmark')
     parser.add_argument('--verbose', dest='verbose', type=int, default=0,
                         help='0 means no info about correctness or not. 1 means it tells you if it is correct or not!')
     args = parser.parse_args()
@@ -56,24 +56,27 @@ class BenchMark:
             self.random_state = random.randint(0, 1000)
 
 
-    def run(self, n: int, verbose: bool = False):
-        seeds = np.random.default_rng(self.random_state).permutation(n).tolist()
-           
-        for _ in tqdm(range(n), desc="Benchmarking...", disable=not verbose):
-            game = Game(dex=self.dex, gen=self.gen, net=self.net, random_state=seeds.pop())
-            strat = self.strat(self.dex.copy(), self.gen, self.net, **self.strat_kwargs)
-            
-            hints = []
-            while not game.end:
-                guess = strat.guess(hints)
-                _, hint = game.guess(guess)
-                hints.append(hint)
+    def run(self, n: int, verbose: bool = False):    
 
-            self.results.append({
-                'target': game.pokemon.to_dict(),
-                'tries': game.tries,
-                'hints': hints,
-            })
+        for target_pkmn in tqdm(self.dex["name"], desc="Benchmarking...", disable=not verbose):
+            for _ in range(n):
+            
+                game = Game(dex=self.dex, gen=self.gen, net=self.net)
+                game.set_target(target_pkmn)
+
+                strat = self.strat(self.dex.copy(), self.gen, self.net, **self.strat_kwargs)
+                
+                hints = []
+                while not game.end:
+                    guess = strat.guess(hints)
+                    _, hint = game.guess(guess)
+                    hints.append(hint)
+
+                self.results.append({
+                    'target': game.pokemon.to_dict(),
+                    'tries': game.tries,
+                    'hints': hints,
+                })
 
         return [r["tries"] for r in self.results]
 
@@ -102,10 +105,10 @@ if __name__ == "__main__":
     from strategies.slowpoke import SlowpokeStrategy
     from strategies.biggestdivider import BiggestDividerStrategy
 
-    #bench = BenchMark(SlowpokeStrategy, dex, gen=1, net=False, strat_kwargs={"initial_guess": "slowpoke"})
-    bench = BenchMark(BiggestDividerStrategy, dex, gen=args.gen, net=args.net)
+    bench = BenchMark(SlowpokeStrategy, dex, gen=args.gen, net=False, strat_kwargs={"initial_guess": "kangaskhan"})
+    # bench = BenchMark(RandomStrategy, dex, gen=args.gen, net=args.net)
 
-    results = bench.run(args.iterations, verbose=bool(args.verbose))
+    results = bench.run(args.repeats, verbose=bool(args.verbose))
 
     print(results)
 

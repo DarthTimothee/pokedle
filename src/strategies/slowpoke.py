@@ -32,6 +32,9 @@ class SlowpokeStrategy(AbstractStrategy):
                 else:  # If this column was incorrect, eliminate this possibility
                     self.dex = self.dex[self.dex[col] != last_hint[col][0]]
 
-            return self.dex.sample(1).iloc[0]['name']
-    
-        return self.initial_guess
+            guess = self.dex.sample(1).iloc[0]['name']    
+        else:
+            guess = self.initial_guess
+        self.dex.drop(self.dex[self.dex["name"] == guess].index, inplace=True)
+
+        return guess
