@@ -30,4 +30,5 @@ if __name__ == "__main__":
     # find best starter
     best_starter = min(scores, key=scores.get)
     
+    print(f"Best starter: {best_starter}")
     # bench.save()
