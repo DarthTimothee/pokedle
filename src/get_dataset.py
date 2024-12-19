@@ -4,6 +4,8 @@ import json
 
 import pandas as pd
 
+from tqdm import tqdm
+
 
 def _download_data():
     # Download data from the web
@@ -52,9 +54,9 @@ def get_stage(name: str, chain_url: int, dex: pd.DataFrame):
     stage3 = list(set(stage3))
 
     # Filter out the pokemon that are not in the dex
-    stage1 = [p for p in stage1 if p in dex["name_api"].values]
-    stage2 = [p for p in stage2 if p in dex["name_api"].values]
-    stage3 = [p for p in stage3 if p in dex["name_api"].values]
+    stage1 = [p for p in stage1 if p in dex["name"].values]
+    stage2 = [p for p in stage2 if p in dex["name"].values]
+    stage3 = [p for p in stage3 if p in dex["name"].values]
     
     # This could mean stage 1 is empty now, so we shift the stages (at most twice)
     for _ in range(2):
@@ -116,7 +118,8 @@ def _add_columns(raw: pd.DataFrame, gen: int = 1) -> pd.DataFrame:
     new_cols = dex["pokedex_number"].apply(_get_species_from_api, cols=["name", "color", "habitat", "evolution_chain"])
     new_cols = pd.DataFrame(new_cols.tolist())
     
-    dex["name_api"] = new_cols["name"]
+    dex["fname"] = dex["name"].copy()  # "fancy name"
+    dex["name"] = new_cols["name"]  # use API name instead of kaggle name
     dex["color"] = new_cols["color"]
     dex["habitat"] = new_cols["habitat"]
     dex["chain_url"] = new_cols["evolution_chain"]
@@ -124,7 +127,7 @@ def _add_columns(raw: pd.DataFrame, gen: int = 1) -> pd.DataFrame:
     # Get the evolution stage and if it's fully evolved
     stages = []
     fully_evolveds = []
-    for name, chain_url in zip(dex["name"], dex["chain_url"]):
+    for name, chain_url in tqdm(zip(dex["name"], dex["chain_url"]), desc="Getting evolution stages from API"):
         stage, is_fully_evolved = get_stage(name, chain_url, dex)
         stages.append(stage)
         fully_evolveds.append(is_fully_evolved)
@@ -132,8 +135,8 @@ def _add_columns(raw: pd.DataFrame, gen: int = 1) -> pd.DataFrame:
     dex["fully_evolved"] = fully_evolveds
 
     dex.drop(columns=["chain_url"], inplace=True)
-    dex_net = dex[["name", "pokedex_number", "type1", "type2", "evolution_stage", "fully_evolved", "color", "habitat", "generation"]]
-    dex_com = dex[["name", "pokedex_number", "type1", "type2", "habitat", "color", "evolution_stage", "weight_kg", "height_m", "generation"]]
+    dex_net = dex[["name", "fname", "pokedex_number", "type1", "type2", "evolution_stage", "fully_evolved", "color", "habitat", "generation"]]
+    dex_com = dex[["name", "fname", "pokedex_number", "type1", "type2", "habitat", "color", "evolution_stage", "weight_kg", "height_m", "generation"]]
     return dex_net, dex_com, dex
 
 
@@ -149,7 +152,7 @@ def fix_types(dex: pd.DataFrame, gen: int = 1) -> pd.DataFrame:
 
     type1s = []
     type2s = []
-    for id in dex["pokedex_number"]:
+    for id in tqdm(dex["pokedex_number"], desc="Getting basic metadata from API"):
         f = _get_pokemon_from_api(id, cols=["past_types", "types"])
         types = f["types"]
         past_types = f["past_types"]
@@ -178,6 +181,11 @@ def fix_types(dex: pd.DataFrame, gen: int = 1) -> pd.DataFrame:
                     type2 = types[1]["type"]["name"]
                 else:
                     type2 = None
+
+        if type1 is None:
+            type1 = "none"
+        if type2 is None:
+            type2 = "none"
                 
         type1s.append(type1)
         type2s.append(type2)
@@ -188,7 +196,7 @@ def fix_types(dex: pd.DataFrame, gen: int = 1) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    GEN = 2
+    GEN = 1
 
     if not os.path.exists("data/kaggle_raw.csv"):
         _download_data()

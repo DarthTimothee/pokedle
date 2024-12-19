@@ -13,8 +13,6 @@ def _init_argparse():
                         help='Choose the generation of pokemons', default=1)
     parser.add_argument('--net', '-n', dest='net', action='store_true',
                         help='Choose columns for the game')
-    parser.add_argument('--guess_limit', '-gl', dest='guess_limit', type=int,
-                        help='Choose the number of limits for guesses', default=999)
     parser.add_argument('--testing', dest='testing', action='store_true',
                         help='Answer is shown before the game starts, do it for testing and debugging purposes!')
     args = parser.parse_args()
@@ -55,7 +53,7 @@ def find_closest_string(target, string_list):
 
 
 class Game:
-    def __init__(self, dex, gen, net: bool = False):
+    def __init__(self, dex, gen, net: bool = False, random_state: int = None):
         self.dex = dex
         self.gen = gen
         self.net = net
@@ -65,45 +63,37 @@ class Game:
         
         # game related settings
         self.end = False
-        self.won = False
         self.tries = 0
-    
-    def _validator(self, _, text):
-        if text in self.dex['name'].values:
-            return True
-        raise inquirer.errors.ValidationError("", reason=f'Team "{text}" do not exist')
     
     def _completer(self, text, state):
         teams = self.dex['name'].values
-        candidates = [team for team in teams if team.startswith(text.capitalize())]
+        candidates = [team for team in teams if team.startswith(text.lower())]
         if candidates:
             return candidates[state % len(candidates)]
         
     def game_ending(self):
-        if game.end and game.won:
+        if game.end:
             for _ in range(3):  # Loop the animation 3 times
                 print("🎉 " * 10)
                 time.sleep(0.3)
                 print("✨ " * 10)
                 time.sleep(0.3)
             print("🎉🎉🎉 CONGRATULATIONS! 🎉🎉🎉\nYou won!")
-        if game.end and not game.won:
-            print("You lost!")
 
 
     def guess(self, name) -> bool:
         name = name.lower() #Convert the name to lower case
         
-        guessed_pokemon = self.dex[self.dex["name_api"] == name]
+        guessed_pokemon = self.dex[self.dex["name"] == name].iloc[0]
         if guessed_pokemon.empty:
-            name = find_closest_string(name, self.dex["name_api"].values)
+            name = find_closest_string(name, self.dex["name"].values)
             print(f"Corrected to: {name}")
-            guessed_pokemon = self.dex[self.dex["name_api"] == name]
+            guessed_pokemon = self.dex[self.dex["name"] == name].iloc[0]
 
-        if guessed_pokemon.iloc[0]["name_api"] == self.pokemon["name_api"]:
-            print("Correct!")
-        else:
-            print("Incorrect!")
+        self.tries += 1
+
+        if guessed_pokemon["name"] == self.pokemon["name"]:
+            self.end = True
 
         com_cols = ["type1", "type2", "evolution_stage", "fully_evolved", "color", "habitat", "generation"]
         net_cols = ["type1", "type2", "habitat", "color", "evolution_stage", "height", "weight"]
@@ -113,15 +103,15 @@ class Game:
         else:
             cols = com_cols
 
+        print("guessed: ", guessed_pokemon["evolution_stage"])
+        print("actual: ", self.pokemon)
+
         # For each column we check if it's correct, so we can give it as a hint
         d = {}
         for col in cols:
-            guessed_val = guessed_pokemon[col].values[0]
-            correct = bool(guessed_val == self.pokemon[col])
-            if col == "type2" and pd.isnull(guessed_val) and pd.isnull(self.pokemon[col]):
-                correct = True
-            d[col] = [guessed_val, correct]
-        return guessed_pokemon.iloc[0]["name_api"] == self.pokemon["name_api"], d
+            guessed_val = guessed_pokemon[col]
+            d[col] = [guessed_val, bool(guessed_val == self.pokemon[col])   ]
+        return self.end, d
 
 
 if __name__ == "__main__":
@@ -130,25 +120,22 @@ if __name__ == "__main__":
         print(args)
     gen = args.gen #1
     net = args.net #False
-    guess_limit = args.guess_limit #Limit on number of guesses
-    dex = pd.read_csv(f"data/dex_gen{gen}.csv")
+    dex = pd.read_csv(f"data/dex_gen{gen}.csv", dtype={
+        "pokedex_number": int,
+        "generation": int,
+        "evolution_stage": int,
+        "fully_evolved": bool,
+        "height_m": float,
+        "weight_kg": float
+    })
     game = Game(dex, gen=gen, net=net)
     if args.testing:
         print(f"Testing stage activated! Answer is: {game.pokemon['name']}")
 
     while not game.end:
         #name = input("Enter a pokemon name: ")
-        name = inquirer.text("Enter a pokemon name", autocomplete=game._completer)#, validate=game._validator)
+        name = inquirer.text("Enter a pokemon name", autocomplete=game._completer)
         iscorrect, hints = game.guess(name)
-        game.tries += 1
-        if iscorrect:
-            game.end = True
-            game.won = True
-        elif game.tries >= guess_limit:
-            game.end = True
-            game.won = False
-        if hints is None:
-            continue
 
         # pretty print each hint with colored background
         # if the hint is correct, the background will be green
