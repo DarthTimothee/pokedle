@@ -12,7 +12,7 @@ from strategies.abstract import AbstractStrategy
 
 class BenchMark:
 
-    def __init__(self, strat: AbstractStrategy, dex: pd.DataFrame, gen: int, net: bool, random_state: int = None):
+    def __init__(self, strat: AbstractStrategy, dex: pd.DataFrame, gen: int, net: bool, random_state: int = None, strat_kwargs: dict = {}):
         """
         IMPORTANT:
         - strat should not be instantiated, only the class itself. 
@@ -24,6 +24,7 @@ class BenchMark:
         self.gen = gen
         self.net = net
         self.results = []
+        self.strat_kwargs = strat_kwargs
 
         if random_state is not None:
             self.random_state = random_state
@@ -31,13 +32,13 @@ class BenchMark:
             self.random_state = random.randint(0, 1000)
 
 
-    def run(self, n: int):
+    def run(self, n: int, verbose: bool = False):
     
         seeds = np.random.default_rng(self.random_state).permutation(n).tolist()
            
-        for _ in tqdm(range(n), desc="Benchmarking..."):
+        for _ in tqdm(range(n), desc="Benchmarking...", disable=not verbose):
             game = Game(dex=self.dex, gen=self.gen, net=self.net, random_state=seeds.pop())
-            strat = self.strat(self.dex.copy(), self.gen, self.net)
+            strat = self.strat(self.dex.copy(), self.gen, self.net, **self.strat_kwargs)
             
             hints = []
             while not game.end:
@@ -45,13 +46,13 @@ class BenchMark:
                 _, hint = game.guess(guess)
                 hints.append(hint)
 
-                self.results.append({
-                    'target': game.pokemon.to_dict(),
-                    'tries': game.tries,
-                    'hints': hints,
-                })
-        
-        return self.results
+            self.results.append({
+                'target': game.pokemon.to_dict(),
+                'tries': game.tries,
+                'hints': hints,
+            })
+
+        return [r["tries"] for r in self.results]
 
     def save(self, out_filename=None):
         if not os.path.exists("results"):
@@ -77,9 +78,14 @@ if __name__ == "__main__":
         "height_m": float,
         "weight_kg": float
     })    
-    from strategies.random import RandomStrategy
-    bench = BenchMark(RandomStrategy, dex, gen=1, net=False)
 
-    results = bench.run(1)
+    from strategies.random import RandomStrategy
+    from strategies.slowpoke import SlowpokeStrategy
+
+    bench = BenchMark(SlowpokeStrategy, dex, gen=1, net=False, strat_kwargs={"initial_guess": "slowpoke"})
+
+    results = bench.run(1000, verbose=False)
+
+    print(results)
 
     # bench.save()
