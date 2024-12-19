@@ -103,9 +103,6 @@ class Game:
         else:
             cols = com_cols
 
-        print("guessed: ", guessed_pokemon["evolution_stage"])
-        print("actual: ", self.pokemon)
-
         # For each column we check if it's correct, so we can give it as a hint
         d = {}
         for col in cols:
