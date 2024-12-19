@@ -212,5 +212,3 @@ if __name__ == "__main__":
         os.mkdir("data")
 
     dex.to_csv(f"data/dex_gen{GEN}.csv", index=False)
-    dex_net.to_csv(f"data/dex_gen{GEN}_net.csv", index=False)
-    dex_com.to_csv(f"data/dex_gen{GEN}_com.csv", index=False)
