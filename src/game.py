@@ -108,9 +108,9 @@ class Game:
     def _discretizer(self):
         encoded_df = self.dex[self.prediction_cols].copy()
         categorizable_cols = self.dex[encoded_df.columns].select_dtypes(['object', 'bool']).columns
-        encoded_df = encoded_df[categorizable_cols].astype('category')
-        encoded_df = encoded_df[categorizable_cols].apply(lambda x: x.cat.codes).values
+        encoded_df[categorizable_cols] = encoded_df[categorizable_cols].astype('category')
         self.encoder_conversion = {col: encoded_df[col].cat.categories.values for col in categorizable_cols}
+        encoded_df[categorizable_cols] = encoded_df[categorizable_cols].apply(lambda x: x.cat.codes)
         self.encoded_matrix = encoded_df.values
         
     def game_ending(self):
