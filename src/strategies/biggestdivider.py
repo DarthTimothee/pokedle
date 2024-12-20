@@ -37,7 +37,7 @@ class BiggestDividerStrategy(AbstractStrategy):
     
     def __eliminate_unmatched(self, hint):
         for col, col_hint in hint.items():
-            if col_hint[1]:
+            if col_hint[1]==1:
                 self.dex.loc[self.dex[col]!=col_hint[0],'possible']=False
             elif not col_hint[1]:
                 self.dex.loc[self.dex[col]==col_hint[0],'possible']=False

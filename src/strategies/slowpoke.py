@@ -27,7 +27,7 @@ class SlowpokeStrategy(AbstractStrategy):
 
             # Update dex based on hint from last guess
             for col in last_hint.keys():
-                if last_hint[col][1]:  # If this column was correct, eliminate all other possibilities
+                if last_hint[col][1]==1:  # If this column was correct, eliminate all other possibilities
                     self.dex = self.dex[self.dex[col] == last_hint[col][0]]
                 else:  # If this column was incorrect, eliminate this possibility
                     self.dex = self.dex[self.dex[col] != last_hint[col][0]]
