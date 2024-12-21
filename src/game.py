@@ -12,26 +12,6 @@ except:
     
 from src import helper_functions
 
-
-def _init_argparse():
-    parser = argparse.ArgumentParser(
-        usage="%(prog)s [OPTION] [FILE]...",
-        description="Enter game options"
-    )
-    parser.add_argument('--gen', '-g', dest='gen', type=int,
-                        help='Choose the generation of pokemons', default=1)
-    parser.add_argument('--net', '-n', dest='net', action='store_true',
-                        help='Choose columns for the game')
-    parser.add_argument('--testing', dest='testing', action='store_true',
-                        help='Answer is shown before the game starts, do it for testing and debugging purposes!')
-    parser.add_argument('--imagify', dest='imagify', action='store_true', 
-                        help='When the game is won, show the image of the pokemon!')
-    parser.add_argument('--verbose', dest='verbose', type=int, default=0,
-                        help='0 means no info about correctness or not. 1 means it tells you if it is correct or not!')
-    args = parser.parse_args()
-    print(f'Running args:{args}')
-    return args
-
 def _levenshtein_distance(s1, s2):
     if len(s1) < len(s2):
         s1, s2 = s2, s1
@@ -158,7 +138,7 @@ class Game:
 
 
 if __name__ == "__main__":
-    args = _init_argparse()
+    args = helper_functions._init_argparse()
     if args.testing:
         print(args)
     gen = args.gen #1
@@ -173,13 +153,13 @@ if __name__ == "__main__":
         "weight_kg": float
     })
     multiple_typings = {'type1': 'type2', 'type2':'type1'}
-    game = Game(dex, gen=gen, net=net, imagify=args.imagify, verbose=args.verbose, multiple_typings=multiple_typings)
+    game = Game(dex, gen=gen, net=net, imagify=args.imagify, verbose=args.verbose_game, multiple_typings=multiple_typings)
     if args.testing:
         print(f"Testing stage activated! Answer is: {game.pokemon['name']}")
-
+    #onehot_dex = pd.get_dummies(game.dex[game.prediction_cols]).astype(int)
     while not game.end:
         #name = input("Enter a pokemon name: ")
-        name = inquirer.text("Enter a pokemon name", autocomplete=game._completer)
+        name = inquirer.text("Enter a pokemon name", autocomplete=game._completer, validate=lambda _,x: len(x) > 0)
         iscorrect, hints = game.guess(name)
 
         # pretty print each hint with colored background

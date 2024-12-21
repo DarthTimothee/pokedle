@@ -109,7 +109,7 @@ if __name__ == "__main__":
     # bench = BenchMark(RandomStrategy, dex, gen=args.gen, net=args.net)
     bench = BenchMark(BiggestDividerStrategy, dex, gen=args.gen, net=args.net)
 
-    results = bench.run(args.repeats, verbose=bool(args.verbose))
+    results = bench.run(args.repeats, verbose=bool(args.verbose_benchmark))
 
     print(results)
 
